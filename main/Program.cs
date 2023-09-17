@@ -35,7 +35,7 @@ namespace main
                             continue;
                         }
                         string user_input = Console.ReadLine();
-                        if (float.TryParse(user_input, out float currencyValue))
+                        if (float.TryParse(user_input, out float currencyValue) && (Convert.ToSingle(user_input) >= 0))
                         {
                             curToExchange = new Currency(curToExchange.currencyName, currencyValue);
                             Console.WriteLine("Введите название первой валюты");
