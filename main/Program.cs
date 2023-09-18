@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Newtonsoft.Json.Linq;
 
 
@@ -8,18 +8,14 @@ namespace main
     {
         static void Main(string[] args)
         {
-
-
-            bool is_online = true;
+            bool isOnline = true;
             var request = new GetRequest("https://www.cbr-xml-daily.ru/daily_json.js");
             request.Run();
-
-            float[] exchange2 = new float[2];
 
             var response = request.Response;
             var json = JObject.Parse(response);
 
-            while (is_online)
+            while (isOnline)
             {
                 Console.WriteLine("Введите опцию:\n1 - конвертатор\n2 - Список доступных валют\n" +
                     "3 - выйти\n");
@@ -28,176 +24,140 @@ namespace main
                 {
                     case "1":
                         Console.WriteLine("Введите название валюты, которую хотите разменять " +
-                            "и ее количество: (необходимо вводить в соответствии с названием валюты в списке валют)");
-                        Currency curToExchange = new Currency(Console.ReadLine().ToUpper());
-                        if (checkIfExist(json, curToExchange.currencyName) == false)
+                            "(необходимо вводить в соответствии с названием валюты в списке валют)");
+                        string currencyToExchangeName = Console.ReadLine().ToUpper();
+                        if (checkIfExist(json, currencyToExchangeName) == false)
                         {
+                            Console.WriteLine("Введена неверная валюта");
+                            Console.WriteLine("Нажмите любую кнопку для продолжения...");
+                            Console.ReadKey();
+                            Console.Clear();
                             continue;
-                        }
-                        string user_input = Console.ReadLine();
-                        if (float.TryParse(user_input, out float currencyValue) && (Convert.ToSingle(user_input) >= 0))
-                        {
-                            curToExchange = new Currency(curToExchange.currencyName, currencyValue);
-                            Console.WriteLine("Введите название первой валюты");
-                            Currency currency1 = new Currency(Console.ReadLine().ToUpper());
-                            if (checkIfExist(json, currency1.currencyName) == false)
-                            {
-                                continue;
-                            }
-                            Console.WriteLine("Введите название второй валюты или знак '-'");
-                            Currency currency2 = new Currency(Console.ReadLine().ToUpper());
-                            if (checkIfExist(json, currency2.currencyName) == false)
-                            {
-                                currency1 = new Currency(currency1.currencyName, exchange(curToExchange, currency1, json));
-                                Console.Write($"{curToExchange.value} {curToExchange.currencyName} = ");
-                                currency1.showInfo();
-                            }
-                            else
-                            {
-                                exchange2 = exchange(curToExchange, currency1, currency2, json);
-                                currency1 = new Currency(currency1.currencyName, exchange2[0]);
-                                currency2 = new Currency(currency2.currencyName, exchange2[1]);
-
-                                Console.WriteLine($"{curToExchange.value} {curToExchange.currencyName} =");
-                                currency1.showInfo();
-                                currency2.showInfo();
-                            }
                         }
                         else
                         {
-                            Console.WriteLine("Введенна неправильная сумма");
+                            Console.WriteLine("Введите количество валюты");
+                            string currencyToExValue = Console.ReadLine();
+                            if (float.TryParse(currencyToExValue, out float currencyValue) && (Convert.ToSingle(currencyToExValue) >= 0))
+                            {
+                                Currency currencyToExchange = new Currency(currencyToExchangeName, currencyValue, getExchangeRate(json, currencyToExchangeName));
+                                Console.WriteLine("Введите название первой валюты");
+                                string currency1Name = Console.ReadLine().ToUpper();
+                                if (checkIfExist(json, currency1Name) == false)
+                                {
+                                    Console.WriteLine("Введена неверная валюта");
+                                    Console.WriteLine("Нажмите любую кнопку для продолжения...");
+                                    Console.ReadKey();
+                                    continue;
+                                }
+                                Currency currency1 = new Currency(currency1Name, getExchangeRate(json, currency1Name));
+                                Console.WriteLine("Введите название второй валюты или знак '-'");
+                                string currency2Name = Console.ReadLine().ToUpper(); 
+                                if (checkIfExist(json, currency2Name) == false)
+                                {
+                                    currencyToExchange.exchange(currency1); 
+                                }
+                                else 
+                                { 
+                                    Currency currency2 = new Currency(currency2Name, getExchangeRate(json, currency2Name));
+                                    currencyToExchange.exchange(currency1, currency2);
+                                }
+                            }
+                            else
+                            {
+                                Console.WriteLine("Введена неправильная сумма");
+                            }
+                            Console.ReadKey();
+                            Console.Clear();
+                            break;
                         }
-                        Console.ReadKey();
-                        Console.Clear();
-                        break;
-
                     case "2":
                         showAllCurrencies(json);
                         break;
-
                     case "3":
-                        is_online = false;
+                        isOnline = false;
                         break;
-                    default:
-                        Console.WriteLine("Неверная операция!!!");
-                        break;
-
                 }
+
+                float getExchangeRate(JObject jsObject, string currencyName)
+                {
+                    if (currencyName != "RUB")
+                    {
+                        var Valute = jsObject["Valute"];
+                        var curName = Valute[currencyName];
+                        var curValue = curName["Value"];
+                        return (float)curValue;
+                    }
+                    else
+                    {
+                        return 1;
+                    }
+                }
+
+                void showAllCurrencies(JObject jsObject)
+                {
+                    var Valute = jsObject["Valute"];
+                    foreach (var item in Valute)
+                    {
+                        Console.WriteLine(item);
+                    }
+                    Console.WriteLine("Нажмите любую кнопку, чтобы продолжить");
+                    Console.ReadKey();
+                    Console.Clear();
+                }
+
+                bool checkIfExist(JObject jsObject, string currencyName)
+                {
+                    if (currencyName == "RUB")
+                    { return true; }
+                    var Valute = jsObject["Valute"];
+                    var curName = Valute[currencyName];
+                    if (curName == null)
+                    {
+                        return false;
+                    }
+                    else return true;
+                }
+
             }
         }
-
-
-        static float getExchangeRate(JObject jsObject, string currencyName)
+        class Currency
         {
-            var Valute = jsObject["Valute"];
-            var curName = Valute[currencyName];
-            var curValue = curName["Value"];
-            return (float)curValue;
-        }
+            private string currencyName;
+            private float value;
+            private float exchangeRate;
 
-        static bool checkIfExist(JObject jsObject, string currencyName)
-        {
-            var Valute = jsObject["Valute"];
-            var curName = Valute[currencyName];
-            if (curName == null)
-            { 
-                Console.WriteLine("Введена неверная валюта");
-                Console.WriteLine("Нажмите любую кнопку для продолжения...");
-                Console.ReadKey();
-                Console.Clear();
-                return false;
-            }   
-            else return true;
-        }
+            public Currency(string Name, float ExchangeRate)
+            {
+                currencyName = Name;
+                value = 0;
+                exchangeRate = ExchangeRate;
+            }
 
-        static void showAllCurrencies(JObject jsObject)
-        {
-            var Valute = jsObject["Valute"];
-            foreach (var item in Valute)
+            public Currency(string Name, float Value, float ExchangeRate)
             {
-                Console.WriteLine(item);
+                currencyName = Name;
+                value = Value;
+                exchangeRate = ExchangeRate;
             }
-            Console.WriteLine("Нажмите любую кнопку, чтобы продолжить");
-            Console.ReadKey();
-            Console.Clear();
-        }
 
-        static float exchange(Currency currencyToEx, Currency CurrencyName1, JObject Valute)
-        {
-            float exchangeValue;
-            if (currencyToEx.currencyName == "RUB")
+            public void showInfo()
             {
-                exchangeValue = currencyToEx.value / getExchangeRate(Valute, CurrencyName1.currencyName);
-                return exchangeValue;
+                Console.Write($"{value} {currencyName}\n");
             }
-            else if ( CurrencyName1.currencyName == "RUB")
+            public void exchange(Currency currency1)
             {
-                exchangeValue = getExchangeRate(Valute, currencyToEx.currencyName) * currencyToEx.value;
-                return exchangeValue;
+                currency1.value = value * exchangeRate / currency1.exchangeRate;
+                Console.WriteLine($"{value} {currencyName} = {currency1.value} {currency1.currencyName}");
             }
-            else
-            {
-                exchangeValue = currencyToEx.value * getExchangeRate(Valute, currencyToEx.currencyName) 
-                    / getExchangeRate(Valute, CurrencyName1.currencyName);
-                return exchangeValue;
-            } 
-        }
 
-        static float[] exchange(Currency currencyToEx, Currency CurrencyName1, Currency CurrencyName2, JObject Valute)
-        {
-            float[] exchangeValue = new float[2];
-            if (currencyToEx.currencyName == "RUB")
+            public void exchange(Currency currency1, Currency currency2)
             {
-                exchangeValue[0] = currencyToEx.value / getExchangeRate(Valute, CurrencyName1.currencyName);
-                exchangeValue[1] = currencyToEx.value / getExchangeRate(Valute, CurrencyName2.currencyName);
-                return exchangeValue;
-            }
-            else if (CurrencyName1.currencyName == "RUB")
-            {
-                exchangeValue[0] = getExchangeRate(Valute, currencyToEx.currencyName) * currencyToEx.value;
-                exchangeValue[1] = currencyToEx.value * getExchangeRate(Valute, currencyToEx.currencyName) 
-                    / getExchangeRate(Valute, CurrencyName2.currencyName);
-                return exchangeValue;
-            }
-            else if (CurrencyName2.currencyName == "RUB")
-            {
-                exchangeValue[0] = currencyToEx.value * getExchangeRate(Valute, currencyToEx.currencyName) 
-                    / getExchangeRate(Valute, CurrencyName2.currencyName);
-                exchangeValue[1] = getExchangeRate(Valute, currencyToEx.currencyName) * currencyToEx.value;
-                return exchangeValue;
-            }
-            else
-            {
-                exchangeValue[0] = currencyToEx.value * getExchangeRate(Valute, currencyToEx.currencyName)
-                    / getExchangeRate(Valute, CurrencyName1.currencyName);                
-                exchangeValue[1] = currencyToEx.value * getExchangeRate(Valute, currencyToEx.currencyName)
-                    / getExchangeRate(Valute, CurrencyName2.currencyName);
-                return exchangeValue;
+                currency1.value = value * exchangeRate / currency1.exchangeRate;
+                currency2.value = value * exchangeRate / currency2.exchangeRate;
+                Console.WriteLine($"{value} {currencyName} = {currency1.value} {currency1.currencyName}");
+                Console.WriteLine($"{value} {currencyName} = {currency2.value} {currency2.currencyName}");
             }
         }
     }
-
-    class Currency
-    {
-        public string currencyName { get; private set; }
-        public float value { get; private set; }
-
-        public Currency(string Name)
-        {
-            currencyName = Name;
-        }
-
-        public Currency(string Name, float Value)
-        {
-            currencyName = Name;
-            value = Value;
-        }
-
-        public void showInfo()
-        {
-            Console.Write($"{value} {currencyName}\n");
-        }
-
-    }
-       
 }
