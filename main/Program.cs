@@ -141,10 +141,6 @@ namespace main
                 exchangeRate = ExchangeRate;
             }
 
-            public void showInfo()
-            {
-                Console.Write($"{value} {currencyName}\n");
-            }
             public void exchange(Currency currency1)
             {
                 currency1.value = value * exchangeRate / currency1.exchangeRate;
