@@ -118,7 +118,6 @@ namespace main
                     }
                     else return true;
                 }
-
             }
         }
         class Currency
